@@ -16,6 +16,7 @@ class LibDogecoinFFI
     private ?\FFI $ffi = null;
     private string $libPath;
     private bool $isLoaded = false;
+    private bool $eccInitialized = false;
 
     public function __construct(string $libPath = '')
     {
@@ -35,6 +36,7 @@ class LibDogecoinFFI
         }
 
         $this->loadFFI();
+        $this->initializeECC();
     }
 
     private function loadFFI(): void
@@ -48,6 +50,8 @@ class LibDogecoinFFI
                 unsigned char data[32];
             } dogecoin_pubkey;
 
+            void dogecoin_ecc_start();
+            void dogecoin_ecc_stop();
             int dogecoin_wif_to_privkey(const char *wif, unsigned char *privkey, int privkey_len);
             int dogecoin_pubkey_from_privkey(
                 const unsigned char *privkey,
@@ -84,6 +88,22 @@ class LibDogecoinFFI
         }
     }
 
+    private function initializeECC(): void
+    {
+        if (!$this->isLoaded) {
+            throw new \RuntimeException('FFI not loaded');
+        }
+
+        try {
+            $this->ffi->dogecoin_ecc_start();
+            $this->eccInitialized = true;
+        } catch (\Throwable $e) {
+            throw new \RuntimeException(
+                "Failed to initialize libdogecoin ECC context: " . $e->getMessage()
+            );
+        }
+    }
+
     private function findLibDogecoin(): string
     {
         $possiblePaths = [
@@ -106,8 +126,8 @@ class LibDogecoinFFI
 
     public function isValidWif(string $wif): bool
     {
-        if (!$this->isLoaded) {
-            throw new \RuntimeException('FFI not loaded');
+        if (!$this->isLoaded || !$this->eccInitialized) {
+            throw new \RuntimeException('FFI not properly initialized');
         }
 
         return (bool) $this->ffi->dogecoin_is_wif_valid($wif);
@@ -115,8 +135,8 @@ class LibDogecoinFFI
 
     public function wifToPrivkey(string $wif): string
     {
-        if (!$this->isLoaded) {
-            throw new \RuntimeException('FFI not loaded');
+        if (!$this->isLoaded || !$this->eccInitialized) {
+            throw new \RuntimeException('FFI not properly initialized');
         }
 
         if (!$this->isValidWif($wif)) {
@@ -145,8 +165,8 @@ class LibDogecoinFFI
 
     public function addressFromWif(string $wif, int $version = 0x1e): string
     {
-        if (!$this->isLoaded) {
-            throw new \RuntimeException('FFI not loaded');
+        if (!$this->isLoaded || !$this->eccInitialized) {
+            throw new \RuntimeException('FFI not properly initialized');
         }
 
         if (!$this->isValidWif($wif)) {
@@ -193,6 +213,17 @@ class LibDogecoinFFI
 
     public function isLoaded(): bool
     {
-        return $this->isLoaded;
+        return $this->isLoaded && $this->eccInitialized;
+    }
+
+    public function __destruct()
+    {
+        if ($this->ffi && $this->eccInitialized) {
+            try {
+                $this->ffi->dogecoin_ecc_stop();
+            } catch (\Throwable $e) {
+                // Silently ignore cleanup errors
+            }
+        }
     }
 }
