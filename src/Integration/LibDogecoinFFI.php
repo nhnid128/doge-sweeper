@@ -28,13 +28,6 @@ class LibDogecoinFFI
 
         $this->libPath = $libPath ?: $this->findLibDogecoin();
 
-        if (!file_exists($this->libPath)) {
-            throw new \RuntimeException(
-                "libdogecoin not found at {$this->libPath}. " .
-                "Please install libdogecoin 0.1.5+ and update the path."
-            );
-        }
-
         fprintf(STDERR, "[DEBUG] Loading libdogecoin from: {$this->libPath}\n");
         $this->loadFFI();
         fprintf(STDERR, "[DEBUG] FFI loaded successfully\n");
@@ -82,13 +75,12 @@ class LibDogecoinFFI
         C;
 
         try {
-            fprintf(STDERR, "[DEBUG] Calling FFI::cdef()\n");
+            fprintf(STDERR, "[DEBUG] Calling FFI::cdef() with lib: {$this->libPath}\n");
             $this->ffi = \FFI::cdef($cdef, $this->libPath);
             fprintf(STDERR, "[DEBUG] FFI::cdef() successful\n");
             $this->isLoaded = true;
         } catch (\Throwable $e) {
             fprintf(STDERR, "[DEBUG] FFI::cdef() failed: {$e->getMessage()}\n");
-            fprintf(STDERR, "[DEBUG] Trace: {$e->getTraceAsString()}\n");
             throw new \RuntimeException(
                 "Failed to load libdogecoin FFI: " . $e->getMessage()
             );
@@ -117,10 +109,13 @@ class LibDogecoinFFI
     private function findLibDogecoin(): string
     {
         $possiblePaths = [
+            '/usr/local/lib/libdogecoin.so.1',
             '/usr/local/lib/libdogecoin.so',
+            '/usr/lib/libdogecoin.so.1',
             '/usr/lib/libdogecoin.so',
             '/usr/local/lib/libdogecoin.dylib',
             '/usr/lib/libdogecoin.dylib',
+            'libdogecoin.so.1',
             'libdogecoin.so',
             'libdogecoin.dll',
         ];
@@ -132,8 +127,8 @@ class LibDogecoinFFI
             }
         }
 
-        fprintf(STDERR, "[DEBUG] libdogecoin not found in standard paths, trying default\n");
-        return '/usr/local/lib/libdogecoin.so';
+        fprintf(STDERR, "[DEBUG] libdogecoin not found in standard paths\n");
+        return '/usr/local/lib/libdogecoin.so.1';
     }
 
     public function isValidWif(string $wif): bool
