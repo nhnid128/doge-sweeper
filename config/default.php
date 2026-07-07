@@ -26,15 +26,17 @@ return [
     // ============================================
 
     // Fournisseur de solde par défaut
-    // Options: 'SoChain', 'dogechain.info', 'BlockCypher'
-    'balance_provider' => 'SoChain',
+    // RECOMMANDÉ: 'dogechain.info' (gratuit, illimité)
+    // Options: 'dogechain.info', 'BlockCypher'
+    'balance_provider' => 'dogechain.info',
 
-    // Token API BlockCypher (optionnel, augmente les limites)
+    // Token API BlockCypher (optionnel, gratuit 200 req/h)
     'blockcypher_token' => '',
 
     // Broadcaster de transaction par défaut
-    // Options: 'SoChain', 'dogechain.info', 'BlockCypher'
-    'transaction_broadcaster' => 'SoChain',
+    // RECOMMANDÉ: 'dogechain.info' (gratuit, illimité)
+    // Options: 'dogechain.info', 'BlockCypher'
+    'transaction_broadcaster' => 'dogechain.info',
 
     // Mode fallback: basculer automatiquement si un API échoue
     'api_fallback_enabled' => true,
