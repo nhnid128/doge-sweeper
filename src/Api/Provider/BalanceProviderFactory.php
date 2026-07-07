@@ -7,71 +7,37 @@ namespace DogeSweeper\Api\Provider;
 use DogeSweeper\Api\BalanceProviderInterface;
 
 /**
- * Agrégateur multi-fournisseur pour la récupération de soldes
+ * Factory pour le fournisseur BlockCypher
  *
- * Permet de:
- * - Basculer entre plusieurs fournisseurs en cas d'erreur
- * - Vérifier les données avec plusieurs sources
- * - Sélectionner automatiquement le meilleur fournisseur
+ * Gestion simplifiée avec BlockCypher comme seul fournisseur
  *
  * @package DogeSweeper\Api\Provider
  */
 class BalanceProviderFactory
 {
     /**
-     * @var array<BalanceProviderInterface> Fournisseurs disponibles
+     * @var BlockCypherProvider Instance du fournisseur
      */
-    private array $providers = [];
+    private BlockCypherProvider $provider;
 
     /**
-     * @var BalanceProviderInterface Fournisseur par défaut
+     * Initialise le factory avec BlockCypher
+     *
+     * @param string|null $token Token API BlockCypher (optionnel)
      */
-    private BalanceProviderInterface $defaultProvider;
-
-    /**
-     * Initialise le factory avec les fournisseurs par défaut
-     */
-    public function __construct()
+    public function __construct(?string $token = null)
     {
-        // Ajouter les fournisseurs par défaut
-        $this->addProvider(new SoChainProvider());
-        $this->addProvider(new DogechainProvider());
-        // BlockCypher en dernier car il a des limites de taux
-        $this->addProvider(new BlockCypherProvider());
-
-        $this->defaultProvider = $this->providers[0];
+        $this->provider = new BlockCypherProvider($token);
     }
 
     /**
-     * Ajoute un fournisseur
+     * Obtient le fournisseur
      *
-     * @param BalanceProviderInterface $provider Fournisseur
-     * @return self
+     * @return BlockCypherProvider
      */
-    public function addProvider(BalanceProviderInterface $provider): self
+    public function getProvider(): BlockCypherProvider
     {
-        $this->providers[] = $provider;
-        return $this;
-    }
-
-    /**
-     * Définit le fournisseur par défaut
-     *
-     * @param string $name Nom du fournisseur
-     * @return self
-     */
-    public function setDefaultProvider(string $name): self
-    {
-        foreach ($this->providers as $provider) {
-            if ($provider->getName() === $name) {
-                $this->defaultProvider = $provider;
-                return $this;
-            }
-        }
-
-        throw new \InvalidArgumentException(
-            "Provider '{$name}' not found"
-        );
+        return $this->provider;
     }
 
     /**
@@ -81,146 +47,41 @@ class BalanceProviderFactory
      */
     public function getDefaultProvider(): BalanceProviderInterface
     {
-        return $this->defaultProvider;
+        return $this->provider;
     }
 
     /**
-     * Obtient tous les fournisseurs
-     *
-     * @return array<BalanceProviderInterface>
-     */
-    public function getProviders(): array
-    {
-        return $this->providers;
-    }
-
-    /**
-     * Obtient un fournisseur par son nom
-     *
-     * @param string $name Nom du fournisseur
-     * @return BalanceProviderInterface|null
-     */
-    public function getProvider(string $name): ?BalanceProviderInterface
-    {
-        foreach ($this->providers as $provider) {
-            if ($provider->getName() === $name) {
-                return $provider;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Récupère le solde avec le fournisseur par défaut
+     * Récupère le solde d'une adresse
      *
      * @param string $address Adresse Dogecoin
      * @return float Solde en DOGE
      */
     public function getBalance(string $address): float
     {
-        return $this->defaultProvider->getBalance($address);
+        return $this->provider->getBalance($address);
     }
 
     /**
-     * Récupère les soldes avec le fournisseur par défaut
+     * Récupère les soldes de plusieurs adresses
      *
      * @param array<string> $addresses Adresses Dogecoin
      * @return array<string, float> Mapping address => solde
      */
     public function getBalances(array $addresses): array
     {
-        return $this->defaultProvider->getBalances($addresses);
+        return $this->provider->getBalances($addresses);
     }
 
     /**
-     * Récupère le solde avec fallback automatique
+     * Obtient les informations du fournisseur
      *
-     * Essaie chaque fournisseur jusqu'à ce qu'un réussisse
-     *
-     * @param string $address Adresse Dogecoin
-     * @return float Solde en DOGE
-     * @throws \RuntimeException Si tous les fournisseurs échouent
+     * @return array<string, mixed>
      */
-    public function getBalanceWithFallback(string $address): float
+    public function getProviderInfo(): array
     {
-        $lastError = null;
-
-        foreach ($this->providers as $provider) {
-            try {
-                return $provider->getBalance($address);
-            } catch (\Exception $e) {
-                $lastError = $e;
-                continue;
-            }
-        }
-
-        throw new \RuntimeException(
-            "All balance providers failed: {$lastError->getMessage()}"
-        );
-    }
-
-    /**
-     * Récupère les soldes avec fallback automatique
-     *
-     * @param array<string> $addresses Adresses Dogecoin
-     * @return array<string, float> Mapping address => solde
-     * @throws \RuntimeException Si tous les fournisseurs échouent
-     */
-    public function getBalancesWithFallback(array $addresses): array
-    {
-        $lastError = null;
-
-        foreach ($this->providers as $provider) {
-            try {
-                return $provider->getBalances($addresses);
-            } catch (\Exception $e) {
-                $lastError = $e;
-                continue;
-            }
-        }
-
-        throw new \RuntimeException(
-            "All balance providers failed: {$lastError->getMessage()}"
-        );
-    }
-
-    /**
-     * Récupère les soldes depuis plusieurs fournisseurs pour comparaison
-     *
-     * @param string $address Adresse Dogecoin
-     * @return array<string, float> Mapping provider_name => solde
-     */
-    public function getBalanceComparison(string $address): array
-    {
-        $balances = [];
-
-        foreach ($this->providers as $provider) {
-            try {
-                $balances[$provider->getName()] = $provider->getBalance($address);
-            } catch (\Exception $e) {
-                $balances[$provider->getName()] = null;
-            }
-        }
-
-        return $balances;
-    }
-
-    /**
-     * Trouve le meilleur fournisseur (le plus rapide et disponible)
-     *
-     * @return BalanceProviderInterface
-     * @throws \RuntimeException Si aucun fournisseur n'est disponible
-     */
-    public function findBestProvider(): BalanceProviderInterface
-    {
-        foreach ($this->providers as $provider) {
-            if ($provider->isAvailable()) {
-                return $provider;
-            }
-        }
-
-        throw new \RuntimeException(
-            "No balance provider is currently available"
-        );
+        return [
+            'name' => $this->provider->getName(),
+            'available' => $this->provider->isAvailable(),
+        ];
     }
 }

@@ -10,6 +10,7 @@ use DogeSweeper\Api\BalanceProviderInterface;
  * Fournisseur BlockCypher pour Dogecoin
  *
  * API Documentation: https://www.blockcypher.com/dev/dogecoin/
+ * - Support complet de Dogecoin
  * - Limite gratuite: 200 requêtes/heure
  * - Supporte les transactions signées
  *

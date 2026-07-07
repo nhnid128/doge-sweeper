@@ -22,24 +22,11 @@ return [
     'network' => 'mainnet', // 'mainnet' ou 'testnet'
 
     // ============================================
-    // Configuration des APIs
+    // Configuration de BlockCypher
     // ============================================
-
-    // Fournisseur de solde par défaut
-    // RECOMMANDÉ: 'dogechain.info' (gratuit, illimité)
-    // Options: 'dogechain.info', 'BlockCypher'
-    'balance_provider' => 'dogechain.info',
-
     // Token API BlockCypher (optionnel, gratuit 200 req/h)
+    // Voir: https://www.blockcypher.com/dev/dogecoin/
     'blockcypher_token' => '',
-
-    // Broadcaster de transaction par défaut
-    // RECOMMANDÉ: 'dogechain.info' (gratuit, illimité)
-    // Options: 'dogechain.info', 'BlockCypher'
-    'transaction_broadcaster' => 'dogechain.info',
-
-    // Mode fallback: basculer automatiquement si un API échoue
-    'api_fallback_enabled' => true,
 
     // ============================================
     // Configuration des fichiers

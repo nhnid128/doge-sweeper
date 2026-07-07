@@ -21,7 +21,7 @@ use DogeSweeper\Api\Broadcaster\TransactionBroadcasterFactory;
  * 1. Charger la configuration
  * 2. Lire les clés WIF
  * 3. Générer les adresses
- * 4. Récupérer les soldes (via API)
+ * 4. Récupérer les soldes (via BlockCypher API)
  * 5. Construire et envoyer les transactions
  *
  * @package DogeSweeper\Application
@@ -86,8 +86,9 @@ class DogeSweeper
         $this->transactionSender = new TransactionSender();
 
         // Initialiser les APIs
-        $this->balanceProviderFactory = $this->initializeBalanceProvider();
-        $this->broadcasterFactory = $this->initializeTransactionBroadcaster();
+        $token = $this->config->get('blockcypher_token');
+        $this->balanceProviderFactory = new BalanceProviderFactory($token);
+        $this->broadcasterFactory = new TransactionBroadcasterFactory($token);
     }
 
     /**
@@ -121,49 +122,6 @@ class DogeSweeper
     }
 
     /**
-     * Initialise le fournisseur de solde
-     *
-     * @return BalanceProviderFactory
-     */
-    private function initializeBalanceProvider(): BalanceProviderFactory
-    {
-        $factory = new BalanceProviderFactory();
-
-        // Configurer le fournisseur par défaut
-        $defaultProvider = $this->config->get('balance_provider', 'SoChain');
-        $factory->setDefaultProvider($defaultProvider);
-
-        // Configurer BlockCypher avec le token si fourni
-        $blockcypherToken = $this->config->get('blockcypher_token');
-        if ($blockcypherToken) {
-            $blockcypherProvider = $factory->getProvider('BlockCypher');
-            if ($blockcypherProvider) {
-                // Régénérer avec le token
-                $newProvider = new \DogeSweeper\Api\Provider\BlockCypherProvider($blockcypherToken);
-                // On ne peut pas mettre à jour directement, mais c'est OK
-            }
-        }
-
-        return $factory;
-    }
-
-    /**
-     * Initialise le broadcaster de transaction
-     *
-     * @return TransactionBroadcasterFactory
-     */
-    private function initializeTransactionBroadcaster(): TransactionBroadcasterFactory
-    {
-        $factory = new TransactionBroadcasterFactory();
-
-        // Configurer le broadcaster par défaut
-        $defaultBroadcaster = $this->config->get('transaction_broadcaster', 'SoChain');
-        $factory->setDefaultBroadcaster($defaultBroadcaster);
-
-        return $factory;
-    }
-
-    /**
      * Lance l'application
      *
      * @return array<string, mixed> Résumé de l'exécution
@@ -179,10 +137,9 @@ class DogeSweeper
             $this->log("✅ Configuration is valid\n\n");
 
             // Afficher les infos API
-            $this->log("API Configuration:\n");
-            $this->log("  Balance Provider: " . $this->balanceProviderFactory->getDefaultProvider()->getName() . "\n");
-            $this->log("  Transaction Broadcaster: " . $this->broadcasterFactory->getDefaultBroadcaster()->getName() . "\n");
-            $this->log("  API Fallback: " . ($this->config->get('api_fallback_enabled') ? 'Enabled' : 'Disabled') . "\n\n");
+            $this->log("BlockCypher API Configuration:\n");
+            $this->log("  Provider: " . $this->balanceProviderFactory->getDefaultProvider()->getName() . "\n");
+            $this->log("  Available: " . ($this->balanceProviderFactory->getDefaultProvider()->isAvailable() ? 'Yes' : 'No') . "\n\n");
 
             // Lire les clés WIF
             $this->log("Reading WIF file...\n");
@@ -194,8 +151,8 @@ class DogeSweeper
                 return ['success' => false, 'error' => 'No valid addresses found'];
             }
 
-            // Charger les soldes via l'API
-            $this->log("Loading balances from " . $this->balanceProviderFactory->getDefaultProvider()->getName() . "...\n");
+            // Charger les soldes via l'API BlockCypher
+            $this->log("Loading balances from BlockCypher...\n");
             $this->loadBalancesFromAPI();
             $this->log("✅ Balances loaded\n\n");
 
@@ -268,9 +225,10 @@ class DogeSweeper
     }
 
     /**
-     * Charge les soldes via l'API
+     * Charge les soldes via l'API BlockCypher
      *
      * @return void
+     * @throws \RuntimeException
      */
     private function loadBalancesFromAPI(): void
     {
@@ -284,20 +242,11 @@ class DogeSweeper
         }
 
         try {
-            // Essayer avec le fournisseur par défaut
             $balances = $this->balanceProviderFactory->getBalances($addresses);
         } catch (\Exception $e) {
-            if ($this->config->get('api_fallback_enabled')) {
-                $this->log("⚠️  Primary provider failed, trying fallback...\n");
-                try {
-                    $balances = $this->balanceProviderFactory->getBalancesWithFallback($addresses);
-                } catch (\Exception $fallbackError) {
-                    $this->log("❌ All providers failed: {$fallbackError->getMessage()}\n");
-                    throw $fallbackError;
-                }
-            } else {
-                throw $e;
-            }
+            throw new \RuntimeException(
+                "Failed to load balances from BlockCypher: {$e->getMessage()}"
+            );
         }
 
         // Mettre à jour les soldes

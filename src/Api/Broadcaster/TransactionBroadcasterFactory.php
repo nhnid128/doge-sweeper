@@ -7,65 +7,37 @@ namespace DogeSweeper\Api\Broadcaster;
 use DogeSweeper\Api\TransactionBroadcasterInterface;
 
 /**
- * Agrégateur multi-broadcaster pour envoyer les transactions
+ * Factory pour le broadcaster BlockCypher
+ *
+ * Gestion simplifiée avec BlockCypher comme seul broadcaster
  *
  * @package DogeSweeper\Api\Broadcaster
  */
 class TransactionBroadcasterFactory
 {
     /**
-     * @var array<TransactionBroadcasterInterface> Broadcasters disponibles
+     * @var BlockCypherBroadcaster Instance du broadcaster
      */
-    private array $broadcasters = [];
+    private BlockCypherBroadcaster $broadcaster;
 
     /**
-     * @var TransactionBroadcasterInterface Broadcaster par défaut
+     * Initialise le factory avec BlockCypher
+     *
+     * @param string|null $token Token API BlockCypher (optionnel)
      */
-    private TransactionBroadcasterInterface $defaultBroadcaster;
-
-    /**
-     * Initialise le factory avec les broadcasters par défaut
-     */
-    public function __construct()
+    public function __construct(?string $token = null)
     {
-        // Ajouter les broadcasters par défaut
-        $this->addBroadcaster(new SoChainBroadcaster());
-        $this->addBroadcaster(new DogechainBroadcaster());
-        $this->addBroadcaster(new BlockCypherBroadcaster());
-
-        $this->defaultBroadcaster = $this->broadcasters[0];
+        $this->broadcaster = new BlockCypherBroadcaster($token);
     }
 
     /**
-     * Ajoute un broadcaster
+     * Obtient le broadcaster
      *
-     * @param TransactionBroadcasterInterface $broadcaster Broadcaster
-     * @return self
+     * @return BlockCypherBroadcaster
      */
-    public function addBroadcaster(TransactionBroadcasterInterface $broadcaster): self
+    public function getBroadcaster(): BlockCypherBroadcaster
     {
-        $this->broadcasters[] = $broadcaster;
-        return $this;
-    }
-
-    /**
-     * Définit le broadcaster par défaut
-     *
-     * @param string $name Nom du broadcaster
-     * @return self
-     */
-    public function setDefaultBroadcaster(string $name): self
-    {
-        foreach ($this->broadcasters as $broadcaster) {
-            if ($broadcaster->getName() === $name) {
-                $this->defaultBroadcaster = $broadcaster;
-                return $this;
-            }
-        }
-
-        throw new \InvalidArgumentException(
-            "Broadcaster '{$name}' not found"
-        );
+        return $this->broadcaster;
     }
 
     /**
@@ -75,68 +47,29 @@ class TransactionBroadcasterFactory
      */
     public function getDefaultBroadcaster(): TransactionBroadcasterInterface
     {
-        return $this->defaultBroadcaster;
+        return $this->broadcaster;
     }
 
     /**
-     * Obtient tous les broadcasters
-     *
-     * @return array<TransactionBroadcasterInterface>
-     */
-    public function getBroadcasters(): array
-    {
-        return $this->broadcasters;
-    }
-
-    /**
-     * Obtient un broadcaster par son nom
-     *
-     * @param string $name Nom du broadcaster
-     * @return TransactionBroadcasterInterface|null
-     */
-    public function getBroadcaster(string $name): ?TransactionBroadcasterInterface
-    {
-        foreach ($this->broadcasters as $broadcaster) {
-            if ($broadcaster->getName() === $name) {
-                return $broadcaster;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Broadcast une transaction avec le broadcaster par défaut
+     * Broadcast une transaction
      *
      * @param string $txHex Transaction en hexadécimal
      * @return string ID de transaction
      */
     public function broadcast(string $txHex): string
     {
-        return $this->defaultBroadcaster->broadcast($txHex);
+        return $this->broadcaster->broadcast($txHex);
     }
 
     /**
-     * Broadcast une transaction avec fallback automatique
+     * Obtient les informations du broadcaster
      *
-     * @param string $txHex Transaction en hexadécimal
-     * @return string ID de transaction
-     * @throws \RuntimeException Si tous les broadcasters échouent
+     * @return array<string, mixed>
      */
-    public function broadcastWithFallback(string $txHex): string
+    public function getBroadcasterInfo(): array
     {
-        $lastError = null;
-
-        foreach ($this->broadcasters as $broadcaster) {
-            try {
-                return $broadcaster->broadcast($txHex);
-            } catch (\Exception $e) {
-                $lastError = $e;
-                continue;
-            }
-        }
-
-        throw new \RuntimeException(
-            "All broadcasters failed: {$lastError->getMessage()}"
-        );
+        return [
+            'name' => $this->broadcaster->getName(),
+        ];
     }
 }
