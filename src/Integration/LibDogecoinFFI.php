@@ -35,8 +35,11 @@ class LibDogecoinFFI
             );
         }
 
+        fprintf(STDERR, "[DEBUG] Loading libdogecoin from: {$this->libPath}\n");
         $this->loadFFI();
+        fprintf(STDERR, "[DEBUG] FFI loaded successfully\n");
         $this->initializeECC();
+        fprintf(STDERR, "[DEBUG] ECC initialized\n");
     }
 
     private function loadFFI(): void
@@ -79,9 +82,13 @@ class LibDogecoinFFI
         C;
 
         try {
+            fprintf(STDERR, "[DEBUG] Calling FFI::cdef()\n");
             $this->ffi = \FFI::cdef($cdef, $this->libPath);
+            fprintf(STDERR, "[DEBUG] FFI::cdef() successful\n");
             $this->isLoaded = true;
         } catch (\Throwable $e) {
+            fprintf(STDERR, "[DEBUG] FFI::cdef() failed: {$e->getMessage()}\n");
+            fprintf(STDERR, "[DEBUG] Trace: {$e->getTraceAsString()}\n");
             throw new \RuntimeException(
                 "Failed to load libdogecoin FFI: " . $e->getMessage()
             );
@@ -95,9 +102,12 @@ class LibDogecoinFFI
         }
 
         try {
+            fprintf(STDERR, "[DEBUG] Calling dogecoin_ecc_start()\n");
             $this->ffi->dogecoin_ecc_start();
+            fprintf(STDERR, "[DEBUG] dogecoin_ecc_start() successful\n");
             $this->eccInitialized = true;
         } catch (\Throwable $e) {
+            fprintf(STDERR, "[DEBUG] dogecoin_ecc_start() failed: {$e->getMessage()}\n");
             throw new \RuntimeException(
                 "Failed to initialize libdogecoin ECC context: " . $e->getMessage()
             );
@@ -117,10 +127,12 @@ class LibDogecoinFFI
 
         foreach ($possiblePaths as $path) {
             if (file_exists($path)) {
+                fprintf(STDERR, "[DEBUG] Found libdogecoin at: {$path}\n");
                 return $path;
             }
         }
 
+        fprintf(STDERR, "[DEBUG] libdogecoin not found in standard paths, trying default\n");
         return '/usr/local/lib/libdogecoin.so';
     }
 
