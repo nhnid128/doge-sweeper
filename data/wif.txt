@@ -1,0 +1,15 @@
+# Exemple de fichier WIF pour Doge Sweeper
+# Une clé WIF par ligne
+# Les lignes vides et les commentaires (commençant par #) sont ignorés
+#
+# Format WIF Dogecoin:
+# - Commence par Q ou K (mainnet) ou c (testnet)
+# - Longueur: 50-56 caractères
+# - Caractères Base58 uniquement (0-9, A-Z, a-z sauf 0, O, I, l)
+#
+# Exemple (non valide - à remplacer par les vraies clés):
+# QVDj2wfyULZzBX4JczAYzYXchVnQfnVqvGYWh5bV8JKBypfG5DAH
+# QUvQ9LZGYYVDj2wfyULZzBX4JczAYzYXchVnQfnVqvGYWh5bV8JK
+#
+# ATTENTION: Gardez ce fichier sécurisé! Les clés WIF sont équivalentes aux mots de passe.
+# Ne partagez jamais ce fichier.

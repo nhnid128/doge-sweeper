@@ -1,0 +1,42 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Point d'entrée CLI pour Doge Sweeper
+ */
+
+$root = dirname(__DIR__);
+
+$autoloaderPaths = [
+    $root . '/vendor/autoload.php',
+    dirname(dirname($root)) . '/vendor/autoload.php',
+];
+
+$autoloaderFound = false;
+foreach ($autoloaderPaths as $path) {
+    if (file_exists($path)) {
+        require $path;
+        $autoloaderFound = true;
+        break;
+    }
+}
+
+if (!$autoloaderFound) {
+    fprintf(STDERR, "Autoloader not found. Please run: composer install\n");
+    exit(1);
+}
+
+use DogeSweeper\Application\DogeSweeper;
+
+try {
+    $app = new DogeSweeper();
+    $result = $app->run();
+    $exitCode = $result['success'] ? 0 : 1;
+    exit($exitCode);
+} catch (\Throwable $e) {
+    fprintf(STDERR, "Fatal error: %s\n", $e->getMessage());
+    if (getenv('DEBUG')) {
+        fprintf(STDERR, "%s\n", $e->getTraceAsString());
+    }
+    exit(1);
+}
